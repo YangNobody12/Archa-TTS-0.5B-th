@@ -1,0 +1,9 @@
+torch
+transformers
+peft
+snac
+soundfile
+sounddevice
+noisereduce
+scipy
+numpy
