@@ -6,7 +6,7 @@ class TTSConfig:
 
     def __init__(
         self,
-        base_model_path: str = "./Archa-TTS-0.5B-th",
+        base_model_path: str = "Pakorn2112/Archa-TTS-0.5B-th",
         snac_model_path: str = "hubertsiuzdak/snac_24khz",
         lora_adapter_path: str | None = None,
         vocab_size: int = 180500,

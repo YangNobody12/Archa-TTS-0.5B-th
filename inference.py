@@ -18,8 +18,8 @@ from queue import Queue, Empty
 # 1. ตั้งค่า — ตรงกับไฟล์เทรน
 # ---------------------------------------------------------
 device = "cuda" if torch.cuda.is_available() else "cpu"
-base_model_path = "Qwen/Qwen2.5-0.5B"
-lora_adapter_path = "./myModel-v8-lora"
+base_model_path = "Pakorn2112/Archa-TTS-0.5B-th"
+# lora_adapter_path = "./myModel-v8-lora"
 snac_model_path = "hubertsiuzdak/snac_24khz"
 
 tokeniser_length = 151665
@@ -36,19 +36,25 @@ SNAC_SR = 24000
 def get_supported_samplerate(requested_sr=SNAC_SR):
     """
     ตรวจสอบว่า hardware รองรับ sample rate ที่ต้องการหรือไม่
-    หากไม่รองรับ จะคืนค่า default sample rate ของเครื่องแทน
+    หากไม่รองรับ จะคืนค่า 44100Hz หรือ default sample rate ของเครื่องแทน
     """
     try:
         sd.check_output_settings(samplerate=requested_sr)
         return requested_sr
     except Exception:
+        fallback_sr = 44100
         try:
-            default_sr = int(sd.query_devices(kind='output')['default_samplerate'])
-            print(f"⚠️ Warning: Hardware ไม่รองรับ {requested_sr}Hz. จะทำการ Resample เป็น {default_sr}Hz สำหรับการเล่นเสียง")
-            return default_sr
+            sd.check_output_settings(samplerate=fallback_sr)
+            print(f"⚠️ Warning: Hardware ไม่รองรับ {requested_sr}Hz. จะทำการ Resample เป็น {fallback_sr}Hz สำหรับการเล่นเสียง")
+            return fallback_sr
         except Exception:
-            print(f"⚠️ Warning: ไม่พบอุปกรณ์ Output. จะใช้ {requested_sr}Hz เป็นค่าพื้นฐาน")
-            return requested_sr
+            try:
+                default_sr = int(sd.query_devices(kind='output')['default_samplerate'])
+                print(f"⚠️ Warning: Hardware ไม่รองรับ {requested_sr}Hz หรือ {fallback_sr}Hz. จะทำการ Resample เป็น {default_sr}Hz สำหรับการเล่นเสียง")
+                return default_sr
+            except Exception:
+                print(f"⚠️ Warning: ไม่พบอุปกรณ์ Output. จะใช้ {requested_sr}Hz เป็นค่าพื้นฐาน")
+                return requested_sr
 
 # กำหนด Sample Rate สำหรับการเล่นเสียง (Playback)
 PLAYBACK_SR = get_supported_samplerate(SNAC_SR)
@@ -66,7 +72,7 @@ def resample_audio(audio, orig_sr, target_sr):
 # 2. โหลดโมเดล
 # ---------------------------------------------------------
 print("กำลังโหลด Tokenizer...")
-tokenizer = AutoTokenizer.from_pretrained(lora_adapter_path)
+tokenizer = AutoTokenizer.from_pretrained(base_model_path)
 
 print("กำลังโหลด Base Model...")
 torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
@@ -75,8 +81,8 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 model.resize_token_embeddings(180500)
 
-print(f"กำลังสวม LoRA Adapter จาก {lora_adapter_path}...")
-model = PeftModel.from_pretrained(model, lora_adapter_path)
+# print(f"กำลังสวม LoRA Adapter จาก {lora_adapter_path}...")
+# model = PeftModel.from_pretrained(model, lora_adapter_path)
 
 
 print("กำลังโหลด SNAC Decoder...")
@@ -212,14 +218,22 @@ class StreamingPlayer:
             chunk_tokens = self.token_buffer[:valid_len]
             tokens_to_decode = self.history_tokens + chunk_tokens
             audio = decode_tokens(tokens_to_decode)
-            
-            if len(audio) > 0 and self.samples_per_frame is not None:
-                if len(self.history_tokens) > 0:
+
+            if len(audio) > 0:
+                if self.samples_per_frame is None:
+                    self.samples_per_frame = len(audio)
+
+                if len(self.history_tokens) > 0 and self.samples_per_frame is not None:
                     history_samples = (len(self.history_tokens) // 7) * self.samples_per_frame
-                    audio = audio[history_samples:]
-                self.all_audio.append(audio)
-                self.queue.put(audio)
-                
+                    if history_samples < len(audio):
+                        audio = audio[history_samples:]
+                    else:
+                        audio = np.array([], dtype=np.float32)
+
+                if len(audio) > 0:
+                    self.all_audio.append(audio)
+                    self.queue.put(audio)
+
         self.queue.put(None)  
         self.thread.join()    
 
@@ -325,6 +339,6 @@ def generate_audio(text_prompt, output_filename="output_realtime.wav", mode="str
 
 
 if __name__ == "__main__":
-    long_text = "สวัสดีครับพี่น้องชาวไทยทุกท่าน วันนี้ผมจะมาเล่าเรื่องราวสุดฮาให้ฟังนะครับ คือเมื่อวานผมไปซื้อข้าวมันไก่ร้านประจำ"
+    long_text = "สวัสดีครับใช้ผมฟรีและเร็วถึงจะเร็วไม่เท่าพี่ไทยเอ็นแอลพีก็ตาม"
     
     generate_audio(long_text, mode="streaming")

@@ -28,7 +28,7 @@ pip install torch transformers peft snac soundfile sounddevice noisereduce scipy
 
 - Python 3.8 ขึ้นไป
 - แนะนำให้ใช้ GPU ที่รองรับ CUDA (รันบน CPU ได้แต่จะช้ามาก)
-- ต้องมี LoRA adapter weights อยู่ในโฟลเดอร์ `./Archa-TTS-0.5B-th`
+- ต้องมี LoRA adapter weights อยู่ในโฟลเดอร์ `Pakorn2112/Archa-TTS-0.5B-th`
 
 ## วิธีใช้งาน
 

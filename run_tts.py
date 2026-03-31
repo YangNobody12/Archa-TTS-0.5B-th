@@ -4,7 +4,7 @@ from tts import TTSConfig, TTSEngine
 
 # ตั้งค่า (ปรับ path ตามต้องการ)
 config = TTSConfig(
-    base_model_path="./Archa-TTS-0.5B-th",
+    base_model_path="Pakorn2112/Archa-TTS-0.5B-th",
     snac_model_path="hubertsiuzdak/snac_24khz",
     # lora_adapter_path="./myModel-v8-lora",  # uncomment ถ้าใช้ LoRA
 )
